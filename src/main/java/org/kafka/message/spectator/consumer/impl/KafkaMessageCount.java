@@ -2,6 +2,7 @@ package org.kafka.message.spectator.consumer.impl;
 
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.kafka.message.spectator.domain.ConsumerInfo;
 import org.kafka.message.spectator.domain.SpectatorInput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,23 +22,27 @@ public class KafkaMessageCount extends AbstractKafkaMessageSpectator<String, Str
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaMessageCount.class);
 	
 	@Override
-	public Long spectate(KafkaConsumer<String, String> consumer, SpectatorInput input) {
-		LOGGER.info("Retrieving message count for : {}", input);
-		List<TopicPartition> partitions = getTopicPartitions(consumer, input);
-		
-		LOGGER.info("Num partitions : {}", partitions.size());
-		
-		consumer.assign(partitions);
-		consumer.seekToEnd(Collections.emptySet());
-		Map<TopicPartition, Long> endPartitions =
-				partitions.stream()
-						.collect(Collectors.toMap(Function.identity(), consumer:: position));
-		
-		long messageCount = partitions.stream()
-								.mapToLong(endPartitions::get)
-								.sum();
-		
-		LOGGER.info("Message count : {}", messageCount);
+	public Long spectate(ConsumerInfo consumerInfo, SpectatorInput input) {
+		KafkaConsumer<String, String> consumer = consumerInfo.getConsumer();
+		long messageCount;
+		synchronized (consumerInfo.getLock()) {
+			LOGGER.info("Retrieving message count for : {}", input);
+			List<TopicPartition> partitions = getTopicPartitions(consumer, input);
+			
+			LOGGER.info("Num partitions : {}", partitions.size());
+			
+			consumer.assign(partitions);
+			consumer.seekToEnd(Collections.emptySet());
+			Map<TopicPartition, Long> endPartitions =
+					partitions.stream()
+							.collect(Collectors.toMap(Function.identity(), consumer::position));
+			
+			 messageCount = partitions.stream()
+					.mapToLong(endPartitions::get)
+					.sum();
+			
+			LOGGER.info("Message count : {}", messageCount);
+		}
 		
 		return messageCount;
 	}

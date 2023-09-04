@@ -3,7 +3,10 @@ package org.kafka.message.spectator.api;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.kafka.message.spectator.consumer.KafkaMessageSpectator;
 import org.kafka.message.spectator.consumer.KafkaSpectatorFactory;
+import org.kafka.message.spectator.domain.ConsumerInfo;
+import org.kafka.message.spectator.domain.SpectatorDateInput;
 import org.kafka.message.spectator.domain.SpectatorInput;
+import org.kafka.message.spectator.domain.SpectatorOffsetInput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,8 +34,12 @@ public class KafkaMessageSpectatorController {
 	private KafkaMessageSpectator<String, String, Long> kafkaMessageCount;
 	
 	@Autowired
-	@Qualifier("kafkaMessagePoll")
-	private KafkaMessageSpectator<String, String, Map<String, String>> kafkaMessagePoll;
+	@Qualifier("kafkaMessagePollByOffset")
+	private KafkaMessageSpectator<String, String, Map<String, String>> kafkaMessagePollByOffset;
+	
+	@Autowired
+	@Qualifier("kafkaMessagePollByDate")
+	private KafkaMessageSpectator<String, String, Map<String, String>> kafkaMessagePollByDate;
 	
 	@Autowired
 	@Qualifier("kafkaSpectatorFactory")
@@ -49,24 +57,31 @@ public class KafkaMessageSpectatorController {
 			SpectatorInput spectatorInput = new SpectatorInput();
 			spectatorInput.setTopic(topic);
 			
-			KafkaConsumer<String, String> consumer = this.kafkaSpectatorFactory.createConsumer();
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
 			// Subscribe to the topic.
 			
-			return this.kafkaMessageCount.spectate(consumer, spectatorInput);
+			return this.kafkaMessageCount.spectate(consumerInfo, spectatorInput);
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating message count", anyException);
 			return -1;
 		}
 	}
 	
-	@GetMapping(value = "/poll-messages/{topic}/{startPosition}/{pollTimeInSeconds}",
+	/**
+	 * Ex: http://localhost:8080/spectate/poll-messages-by-offset/my-topic-p5/1/2
+	 * @param topic
+	 * @param startPosition
+	 * @param pollTimeInSeconds
+	 * @return
+	 */
+	@GetMapping(value = "/poll-messages-by-offset/{topic}/{startPosition}/{pollTimeInSeconds}",
 					produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, String> pollMessages(@PathVariable(value = "topic") String topic,
+	public Map<String, String> pollMessagesByOffset(@PathVariable(value = "topic") String topic,
 											@PathVariable(value = "startPosition") int startPosition,
 											@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
 		try {
 			
-			SpectatorInput spectatorInput = new SpectatorInput();
+			SpectatorOffsetInput spectatorInput = new SpectatorOffsetInput();
 			spectatorInput.setTopic(topic);
 			spectatorInput.setStartPosition(startPosition);
 			if(pollTimeInSeconds > 0){
@@ -74,10 +89,41 @@ public class KafkaMessageSpectatorController {
 			}
 			LOGGER.info("Fetching messages for {}", spectatorInput);
 			
-			KafkaConsumer<String, String> consumer = this.kafkaSpectatorFactory.createConsumer();
-			// Subscribe to the topic.
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
 			
-			return this.kafkaMessagePoll.spectate(consumer, spectatorInput);
+			return this.kafkaMessagePollByOffset.spectate(consumerInfo, spectatorInput);
+		} catch (Exception anyException){
+			LOGGER.error("Error while calculating messages", anyException);
+			return new HashMap<>();
+		}
+	}
+	
+	/**
+	 * Ex: http://localhost:8080/spectate/poll-messages-by-date/my-topic-p5/2023-09-03T00:15:30/
+	 *
+	 * @param topic
+	 * @param dateTime
+	 * @param pollTimeInSeconds
+	 * @return
+	 */
+	@GetMapping(value = "/poll-messages-by-date/{topic}/{dateTime}/{pollTimeInSeconds}",
+			produces = MediaType.APPLICATION_JSON_VALUE)
+	public Map<String, String> pollMessagesByDate(@PathVariable(value = "topic") String topic,
+											@PathVariable(value = "dateTime") String dateTime,
+											@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
+		try {
+			
+			SpectatorDateInput spectatorInput = new SpectatorDateInput();
+			spectatorInput.setTopic(topic);
+			spectatorInput.setDateTime(LocalDateTime.parse(dateTime));
+			if(pollTimeInSeconds > 0){
+				spectatorInput.setPollTime(pollTimeInSeconds);
+			}
+			LOGGER.info("Fetching messages for {}", spectatorInput);
+			
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
+			
+			return this.kafkaMessagePollByDate.spectate(consumerInfo, spectatorInput);
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating messages", anyException);
 			return new HashMap<>();

@@ -9,8 +9,6 @@ import static org.kafka.message.spectator.constant.KafkaMessageSpectatorConstant
  */
 public class SpectatorInput {
 	private String topic;
-	private int startPosition;
-	
 	
 	private int pollTime = DEFAULT_POLLTIME;
 	
@@ -20,14 +18,6 @@ public class SpectatorInput {
 	
 	public void setTopic(String topic) {
 		this.topic = topic;
-	}
-	
-	public int getStartPosition() {
-		return startPosition;
-	}
-	
-	public void setStartPosition(int startPosition) {
-		this.startPosition = startPosition;
 	}
 	
 	public int getPollTime() {
@@ -42,7 +32,7 @@ public class SpectatorInput {
 	public String toString() {
 		return "SpectatorInput{" +
 				"topic='" + topic + '\'' +
-				", startPosition=" + startPosition +
+				", pollTime=" + pollTime +
 				'}';
 	}
 	
@@ -53,14 +43,14 @@ public class SpectatorInput {
 		
 		SpectatorInput that = (SpectatorInput) o;
 		
-		if (startPosition != that.startPosition) return false;
+		if (pollTime != that.pollTime) return false;
 		return Objects.equals(topic, that.topic);
 	}
 	
 	@Override
 	public int hashCode() {
 		int result = topic != null ? topic.hashCode() : 0;
-		result = 31 * result + startPosition;
+		result = 31 * result + pollTime;
 		return result;
 	}
 }
