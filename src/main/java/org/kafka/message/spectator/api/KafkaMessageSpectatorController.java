@@ -26,8 +26,12 @@ public class KafkaMessageSpectatorController {
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaMessageSpectatorController.class);
 	
 	@Autowired
-	@Qualifier("kafkaMessageSpectator")
-	private KafkaMessageSpectator<String, String> kafkaMessageSpectator;
+	@Qualifier("kafkaMessageCount")
+	private KafkaMessageSpectator<String, String, Long> kafkaMessageCount;
+	
+	@Autowired
+	@Qualifier("kafkaMessagePoll")
+	private KafkaMessageSpectator<String, String, Map<String, String>> kafkaMessagePoll;
 	
 	@Autowired
 	@Qualifier("kafkaSpectatorFactory")
@@ -48,25 +52,23 @@ public class KafkaMessageSpectatorController {
 			KafkaConsumer<String, String> consumer = this.kafkaSpectatorFactory.createConsumer();
 			// Subscribe to the topic.
 			
-			return this.kafkaMessageSpectator.messageCount(consumer, spectatorInput);
+			return this.kafkaMessageCount.spectate(consumer, spectatorInput);
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating message count", anyException);
 			return -1;
 		}
 	}
 	
-	@GetMapping(value = "/poll-messages/{topic}/{startPosition}/{endPosition}/{pollTimeInSeconds}",
+	@GetMapping(value = "/poll-messages/{topic}/{startPosition}/{pollTimeInSeconds}",
 					produces = MediaType.APPLICATION_JSON_VALUE)
 	public Map<String, String> pollMessages(@PathVariable(value = "topic") String topic,
 											@PathVariable(value = "startPosition") int startPosition,
-											@PathVariable(value = "endPosition") int endPosition,
 											@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
 		try {
 			
 			SpectatorInput spectatorInput = new SpectatorInput();
 			spectatorInput.setTopic(topic);
 			spectatorInput.setStartPosition(startPosition);
-			spectatorInput.setEndPosition(endPosition);
 			if(pollTimeInSeconds > 0){
 				spectatorInput.setPollTime(pollTimeInSeconds);
 			}
@@ -75,7 +77,7 @@ public class KafkaMessageSpectatorController {
 			KafkaConsumer<String, String> consumer = this.kafkaSpectatorFactory.createConsumer();
 			// Subscribe to the topic.
 			
-			return this.kafkaMessageSpectator.pollMessages(consumer, spectatorInput);
+			return this.kafkaMessagePoll.spectate(consumer, spectatorInput);
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating messages", anyException);
 			return new HashMap<>();
