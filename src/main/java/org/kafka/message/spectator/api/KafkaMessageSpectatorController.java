@@ -1,6 +1,5 @@
 package org.kafka.message.spectator.api;
 
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.kafka.message.spectator.consumer.KafkaMessageSpectator;
 import org.kafka.message.spectator.consumer.KafkaSpectatorFactory;
 import org.kafka.message.spectator.domain.ConsumerInfo;

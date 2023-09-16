@@ -24,9 +24,19 @@ public class KafkaSpectatorFactory {
 		return createConsumer("localhost:9092", "MySampleConsumer");
 	}
 	
+	/**
+	 * Consumer should be only one for consumer group.
+	 * There is no need to create multiple consumers for the same consumer group
+	 * Giving parallel access will cause issues while seeking the offset#
+	 *
+	 * @param host
+	 * @param consumer
+	 * @return
+	 */
 	public ConsumerInfo createConsumer(String host, String consumer){
-		if(Objects.nonNull(CONSUMER_STORE.get(consumer))){
-			return CONSUMER_STORE.get(consumer);
+		String uniqueKey = host + consumer;
+		if(Objects.nonNull(CONSUMER_STORE.get(uniqueKey))){
+			return CONSUMER_STORE.get(uniqueKey);
 		}
 		
 		ConsumerInfo consumerInfo;
@@ -52,7 +62,7 @@ public class KafkaSpectatorFactory {
 			
 			KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(props);
 			consumerInfo = new ConsumerInfo(kafkaConsumer);
-			CONSUMER_STORE.put(consumer, consumerInfo);
+			CONSUMER_STORE.put(uniqueKey, consumerInfo);
 		}
 		
 		return consumerInfo;
