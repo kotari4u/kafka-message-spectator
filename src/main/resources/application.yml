@@ -1,0 +1,20 @@
+kafka:
+  message:
+    spectate:
+      maxPoll: 1000
+      offsetReset: earliest
+      isolationLevel: read_committed
+      consumers:
+        -
+          host: localhost:9092
+          topics:
+            - my-topic
+            - my-topic-p5
+          consumerGroups:
+            - MySampleConsumer1
+            - MySampleConsumer2
+        - host: temp
+          consumerGroups:
+            - temp1
+            - temp2
+
