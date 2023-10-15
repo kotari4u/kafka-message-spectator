@@ -1,24 +1,17 @@
 package org.kafka.message.spectator.api;
 
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.kafka.message.spectator.consumer.KafkaMessageSpectator;
 import org.kafka.message.spectator.consumer.KafkaSpectatorFactory;
-import org.kafka.message.spectator.domain.ConsumerInfo;
-import org.kafka.message.spectator.domain.SpectatorDateInput;
-import org.kafka.message.spectator.domain.SpectatorInput;
-import org.kafka.message.spectator.domain.SpectatorOffsetInput;
+import org.kafka.message.spectator.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,18 +39,25 @@ public class KafkaMessageSpectatorController {
 	private KafkaSpectatorFactory kafkaSpectatorFactory;
 	
 	/**
-	 * ref: http://localhost:8080/spectate/message_count/my-topic
-	 * @param topic
-	 * @return
+	 * ref: <a href="http://localhost:8080/spectate/message_count/localhost:9092/MySampleConsumer/my-topic">Sample link</a>
+	 *
+	 * @param topic - Topic to retrieve messages from
+	 * @return - long - number of messages in a topic
 	 */
-	@GetMapping("/message_count/{topic}")
-	public long messageCount(@PathVariable(value = "topic") String topic){
+	@GetMapping("/message_count/{host}/{consumerGroup}/{topic}")
+	@ResponseBody
+	public long messageCount(
+			@PathVariable(value = "host") String host,
+			@PathVariable(value = "consumerGroup") String consumerGroup,
+			@PathVariable(value = "topic") String topic){
 		try {
 			LOGGER.info("message_count {}", topic);
 			SpectatorInput spectatorInput = new SpectatorInput();
+			spectatorInput.setHost(host);
+			spectatorInput.setConsumerGroup(consumerGroup);
 			spectatorInput.setTopic(topic);
 			
-			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer(spectatorInput);
 			// Subscribe to the topic.
 			
 			return this.kafkaMessageCount.spectate(consumerInfo, spectatorInput);
@@ -68,20 +68,31 @@ public class KafkaMessageSpectatorController {
 	}
 	
 	/**
-	 * Ex: http://localhost:8080/spectate/poll-messages-by-offset/my-topic-p5/1/2
-	 * @param topic
-	 * @param startPosition
-	 * @param pollTimeInSeconds
-	 * @return
+	 * ref: <a href="http://localhost:8080/spectate/poll-messages-by-offset/localhost:9092/MySampleConsumer/my-topic/1/2">Sample link</a>
+	 *
+	 * @param host - Kafka host url
+	 * @param consumerGroup - consumer group to retrieve messages from Kafka
+	 * @param topic - Topic to retrieve messages from
+	 * @param startPosition - Position to start with. This position # is offset read from the last
+	 * @param pollTimeInSeconds - Max poll to fetch messages. Consumer will pull # of messages with in the time limit
+	 *                          If we are trying to retrieve more messages / there are any network delays
+	 *                          Give more time to poll
+	 * @return - Messages with key value pair
 	 */
-	@GetMapping(value = "/poll-messages-by-offset/{topic}/{startPosition}/{pollTimeInSeconds}",
+	@GetMapping(value = "/poll-messages-by-offset/{host}/{consumerGroup}/{topic}/{startPosition}/{pollTimeInSeconds}",
 					produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, String> pollMessagesByOffset(@PathVariable(value = "topic") String topic,
-											@PathVariable(value = "startPosition") int startPosition,
-											@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
+	@ResponseBody
+	public List<SpectatorOutput<String, String>> pollMessagesByOffset(
+			@PathVariable(value = "host") String host,
+			@PathVariable(value = "consumerGroup") String consumerGroup,
+			@PathVariable(value = "topic") String topic,
+			@PathVariable(value = "startPosition") int startPosition,
+			@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
 		try {
 			
 			SpectatorOffsetInput spectatorInput = new SpectatorOffsetInput();
+			spectatorInput.setHost(host);
+			spectatorInput.setConsumerGroup(consumerGroup);
 			spectatorInput.setTopic(topic);
 			spectatorInput.setStartPosition(startPosition);
 			if(pollTimeInSeconds > 0){
@@ -89,31 +100,40 @@ public class KafkaMessageSpectatorController {
 			}
 			LOGGER.info("Fetching messages for {}", spectatorInput);
 			
-			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer(spectatorInput);
 			
-			return this.kafkaMessagePollByOffset.spectate(consumerInfo, spectatorInput);
+			Map<String, String> messages = this.kafkaMessagePollByOffset.spectate(consumerInfo, spectatorInput);
+			return new SpectatorDataOutput<>(messages).getMessages();
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating messages", anyException);
-			return new HashMap<>();
+			return new SpectatorDataOutput<String, String>().getMessages();
 		}
 	}
 	
 	/**
-	 * Ex: http://localhost:8080/spectate/poll-messages-by-date/my-topic-p5/2023-09-03T00:15:30/
+	 * ref: <a href="http://localhost:8080/spectate/poll-messages-by-date/localhost:9092/MySampleConsumer/my-topic-p5/2023-09-03T00:15:30/">Sample link</a>
 	 *
-	 * @param topic
-	 * @param dateTime
-	 * @param pollTimeInSeconds
-	 * @return
+	 * @param topic - Topic to retrieve messages from
+	 * @param dateTime - Date time to start with
+	 * @param pollTimeInSeconds - Max poll to fetch messages. Consumer will pull # of messages with in the time limit
+	 * 	 *                          If we are trying to retrieve more messages / there are any network delays
+	 * 	 *                          Give more time to poll
+	 * @return - Messages in a key value format
 	 */
-	@GetMapping(value = "/poll-messages-by-date/{topic}/{dateTime}/{pollTimeInSeconds}",
+	@GetMapping(value = "/poll-messages-by-date/{host}/{consumerGroup}/{topic}/{dateTime}/{pollTimeInSeconds}",
 			produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, String> pollMessagesByDate(@PathVariable(value = "topic") String topic,
-											@PathVariable(value = "dateTime") String dateTime,
-											@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
+	@ResponseBody
+	public List<SpectatorOutput<String, String>> pollMessagesByDate(
+			@PathVariable(value = "host") String host,
+			@PathVariable(value = "consumerGroup") String consumerGroup,
+			@PathVariable(value = "topic") String topic,
+			@PathVariable(value = "dateTime") String dateTime,
+			@PathVariable(value = "pollTimeInSeconds", required = false) int pollTimeInSeconds){
 		try {
 			
 			SpectatorDateInput spectatorInput = new SpectatorDateInput();
+			spectatorInput.setHost(host);
+			spectatorInput.setConsumerGroup(consumerGroup);
 			spectatorInput.setTopic(topic);
 			spectatorInput.setDateTime(LocalDateTime.parse(dateTime));
 			if(pollTimeInSeconds > 0){
@@ -121,12 +141,13 @@ public class KafkaMessageSpectatorController {
 			}
 			LOGGER.info("Fetching messages for {}", spectatorInput);
 			
-			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer();
+			ConsumerInfo consumerInfo = this.kafkaSpectatorFactory.createConsumer(spectatorInput);
 			
-			return this.kafkaMessagePollByDate.spectate(consumerInfo, spectatorInput);
+			Map<String, String> messages = this.kafkaMessagePollByDate.spectate(consumerInfo, spectatorInput);
+			return new SpectatorDataOutput<>(messages).getMessages();
 		} catch (Exception anyException){
 			LOGGER.error("Error while calculating messages", anyException);
-			return new HashMap<>();
+			return new SpectatorDataOutput<String, String>().getMessages();
 		}
 	}
 	
