@@ -23,7 +23,7 @@ sudo npm install --save  @angular-material-components/datetime-picker
 
 ## Poll message by Date
 
-![Screenshot](images/Poll_by_Date.jpeg)
+![Screenshot](images/Poll_by_date.jpeg)
 
 ## Development server
 
