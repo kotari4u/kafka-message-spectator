@@ -1,0 +1,76 @@
+<mat-form-field>
+  <mat-label>Host</mat-label>
+  <mat-select [(value)]="selectedConfig">
+    <mat-option *ngFor="let config of kafkaConfig" [value]="config">{{config.host}}</mat-option>
+  </mat-select>
+</mat-form-field>
+
+
+<mat-form-field>
+  <mat-label>Consumer Groups</mat-label>
+  <mat-select [(value)]="selectedConsumerGroup">
+    <mat-option *ngFor="let consumerGroup of selectedConfig.consumerGroups" [value]="consumerGroup">{{consumerGroup}}</mat-option>
+  </mat-select>
+</mat-form-field>
+
+
+<mat-form-field>
+  <mat-label>Topics</mat-label>
+  <mat-select [(value)]="selectedTopic">
+    <mat-option *ngFor="let topic of selectedConfig.topics" [value]="topic">{{topic}}</mat-option>
+  </mat-select>
+</mat-form-field>
+<br/>
+
+<mat-form-field>
+  <mat-label>Fetch by</mat-label>
+  <mat-select [(value)]="fetchBy" (selectionChange)="fetchByChange()" >
+    <mat-option value="date" selected>Date</mat-option>
+    <mat-option value="offset" selected>Offset</mat-option>
+  </mat-select >
+</mat-form-field>
+
+
+  <mat-form-field  class="input-form-field" [class.cdk-visually-hidden]="hideFetchByOffset">
+    <mat-label>Offset</mat-label>
+    <input matInput type="number" placeholder="Offset# to start reading from" required  [(ngModel)]="selectedOffset"/>
+  </mat-form-field>
+
+<mat-form-field class="input-form-field" [class.cdk-visually-hidden]="hideFetchByDate">
+    <mat-label>Date</mat-label>
+    <input matInput [matDatepicker]="picker" required [(ngModel)]="selectedDate" format="yyyy-MM-dd"/>
+
+    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+    <mat-hint>MM/dd/yyyy</mat-hint>
+    <mat-datepicker #picker></mat-datepicker>
+  </mat-form-field>
+  <mat-form-field [class.cdk-visually-hidden]="hideFetchByDate">
+    <mat-label>Time: </mat-label>
+    <input matInput type="time" [(ngModel)]="selectedTime">
+</mat-form-field>
+<br/>
+<mat-form-field  class="input-form-field">
+  <mat-label>Poll time</mat-label>
+  <input matInput type="number" placeholder="Poll time between 0 and 300" required  [(ngModel)]="maxPollTimeInSeconds"/>
+  <mat-hint>Poll time between 0 and 300</mat-hint>
+</mat-form-field>
+
+<p>{{message}}</p>
+<!-- Button to clear selection -->
+<button (click)="getKafkaMessages()">Submit</button>
+<br/><br/>
+<!-- AG Grid Angular Component -->
+<ag-grid-angular
+    style="width: 100%; height: 100%"
+    class="ag-theme-alpine"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    [rowData]="rows | async"
+    [rowSelection]="'multiple'"
+    [animateRows]="true"
+    [pagination]="true"
+    [paginationAutoPageSize]=true
+    (gridReady)="onGridReady($event)"
+    [overlayLoadingTemplate]="loadingTemplate"
+    [overlayNoRowsTemplate]="noRowsTemplate"
+  ></ag-grid-angular>
