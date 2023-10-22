@@ -1,5 +1,8 @@
-# SaiApp
+# Kafka Message Spectator UI
 
+This UI is connected to <a href="https://github.com/kotari4u/kafka-message-spectator/blob/phase-1/kafka-message-spectate-boot/README.md">Kafka Message spectator boot</a>
+and display messages polled by API. It uses angular grid to display messages in a grid format. Angular Material is being used for drop downs, date time
+<br/>
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.1.
 
 ## Installation
